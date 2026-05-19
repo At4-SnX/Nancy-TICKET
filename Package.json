@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "nancyTicket.js",
   "scripts": {
-    "start": "node Index.js"
+    "start": "node nancyTicket.js"
   },
   "dependencies": {
     "discord.js": "^14.14.1",
