@@ -27,7 +27,7 @@ const client = new Client({
 // ===============================
 
 const serverConfig = {
-    "ID_SERVEUR": {
+    "1472637775281918123": {
         categories: {
             question: "1506374094906720387",
             partenariat: "1506374190956281997",
