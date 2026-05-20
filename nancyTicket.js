@@ -1,4 +1,3 @@
-
 require("dotenv").config();
 const {
     Client,
@@ -7,6 +6,9 @@ const {
     EmbedBuilder,
     ActionRowBuilder,
     StringSelectMenuBuilder,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle,
     ButtonBuilder,
     ButtonStyle,
     PermissionsBitField
@@ -23,200 +25,183 @@ const client = new Client({
 });
 
 // ===============================
-// CONFIGURATION PAR SERVEUR
+// CONFIGURATION SERVEUR
 // ===============================
+
+const SERVER_ID = "1472637775281918123"; // ID de ton serveur
+const PANEL_CHANNEL = "1505943795643060235"; // Salon où envoyer le panel
 
 const serverConfig = {
-    "1472637775281918123": {
-        categories: {
-            question: "1506374094906720387",
-            partenariat: "1506374190956281997",
-            reportstaff: "1506374327509979186",
-            reportjoueur: "1506374389137149982",
-            legal: "1505943608832819282",
-            illegal: "1505943610141442129",
-            fondation: "1506374573535268885"
-        },
-        staffRoles: {
-            question: ["1505943612507295826"],
-            partenariat: ["1505943612507295826"],
-            reportstaff: ["1505943612507295826"],
-            reportjoueur: ["1505943612507295826"],
-            legal: ["1505943612507295826"],
-            illegal: ["1505943612507295826"],
-            fondation: ["1505943603204198400"]
-        },
-        logs: "1506375933051932753"
-    }
+    categories: {
+        question: "1506374094906720387",
+        partenariat: "1506374190956281997",
+        reportstaff: "1506374327509979186",
+        reportjoueur: "1506374389137149982",
+        legal: "1505943608832819282",
+        illegal: "1505943610141442129",
+        fondation: "1506374573535268885"
+    },
+    staffRoles: {
+        question: ["1505943612507295826"],
+        partenariat: ["1505943612507295826"],
+        reportstaff: ["1505943612507295826"],
+        reportjoueur: ["1505943612507295826"],
+        legal: ["1505943612507295826"],
+        illegal: ["1505943612507295826"],
+        fondation: ["1505943603204198400"]
+    },
+    logs: "1506375933051932753"
 };
 
 // ===============================
-// ANTI-SPAM
+// EMBED PREMIUM BLEU
 // ===============================
 
-const ticketCooldown = new Map();
-
-// ===============================
-// MESSAGES AUTOMATIQUES
-// ===============================
-
-const autoMessages = {
-    question: "🔹 Merci d’avoir ouvert un ticket **Question**.\nUn membre du staff va vous répondre rapidement.",
-    partenariat: "🔹 Merci pour votre intérêt pour un **Partenariat**.\nNotre équipe va étudier votre demande.",
-    reportstaff: "🔹 Vous avez ouvert un **Report Staff**.\nMerci de fournir un maximum de preuves (vidéos, captures).",
-    reportjoueur: "🔹 Vous avez ouvert un **Report Joueur**.\nMerci d’expliquer la situation clairement et d’envoyer vos preuves.",
-    legal: "🔹 Vous avez ouvert une **Demande Légal**.\nMerci de détailler votre requête.",
-    illegal: "🔹 Vous avez ouvert une **Demande Illégal**.\nExpliquez votre demande, un membre de la fondation vous répondra.",
-    fondation: "🔹 Vous contactez la **Fondation**.\nExpliquez votre situation, nous revenons vers vous rapidement."
-};
-
-// ===============================
-// EMBED PREMIUM
-// ===============================
-
-function createStyledEmbed(title, description) {
+function premiumEmbed(title, desc) {
     return new EmbedBuilder()
-        .setTitle(`🔹 ${title}`)
-        .setDescription(description)
-        .setColor("#0A3D62")
-        .setFooter({ text: "Nancy Ticket — Système Premium" })
+        .setTitle(`💠 ${title}`)
+        .setDescription(desc)
+        .setColor("#1A73E8")
+        .setFooter({ text: "Nancy Ticket — Premium System" })
         .setTimestamp();
 }
 
 // ===============================
-// PANEL DE TICKET
+// ENVOI DU PANEL AU DÉMARRAGE
 // ===============================
 
-client.on("interactionCreate", async interaction => {
-    if (!interaction.isChatInputCommand()) return;
+client.on("ready", async () => {
+    console.log(`Connecté en tant que ${client.user.tag}`);
 
-    if (interaction.commandName === "panel") {
-        const menu = new StringSelectMenuBuilder()
-            .setCustomId("ticket_menu")
-            .setPlaceholder("🔹 Choisissez un type de ticket")
-            .addOptions([
-                { label: "❓ Question", value: "question" },
-                { label: "🤝 Partenariat", value: "partenariat" },
-                { label: "🛡️ Report Staff", value: "reportstaff" },
-                { label: "⚠️ Report Joueur", value: "reportjoueur" },
-                { label: "📘 Demande Légal", value: "legal" },
-                { label: "📕 Demande Illégal", value: "illegal" },
-                { label: "🏛️ Contacter la fondation", value: "fondation" }
-            ]);
+    const channel = client.channels.cache.get(PANEL_CHANNEL);
+    if (!channel) return console.log("❌ Salon du panel introuvable.");
 
-        const row = new ActionRowBuilder().addComponents(menu);
+    const embed = premiumEmbed(
+        "Centre de Support",
+        "Sélectionnez une catégorie ci‑dessous pour ouvrir un ticket.\nUn formulaire apparaîtra automatiquement."
+    );
 
-        const embed = createStyledEmbed(
-            "Ouverture de ticket",
-            "Sélectionnez une catégorie pour ouvrir un ticket."
-        );
+    const menu = new StringSelectMenuBuilder()
+        .setCustomId("ticket_menu")
+        .setPlaceholder("💠 Choisissez une catégorie")
+        .addOptions([
+            { label: "💙 Question", value: "question" },
+            { label: "💙 Partenariat", value: "partenariat" },
+            { label: "💙 Report Staff", value: "reportstaff" },
+            { label: "💙 Report Joueur", value: "reportjoueur" },
+            { label: "💙 Demande Légal", value: "legal" },
+            { label: "💙 Demande Illégal", value: "illegal" },
+            { label: "💙 Fondation", value: "fondation" }
+        ]);
 
-        await interaction.reply({ embeds: [embed], components: [row] });
-    }
+    const row = new ActionRowBuilder().addComponents(menu);
+
+    await channel.send({ embeds: [embed], components: [row] });
 });
 
 // ===============================
-// OUVERTURE DU TICKET
+// OUVERTURE DU FORMULAIRE
 // ===============================
 
 client.on("interactionCreate", async interaction => {
     if (!interaction.isStringSelectMenu()) return;
     if (interaction.customId !== "ticket_menu") return;
 
-    const userId = interaction.user.id;
-    const now = Date.now();
-
-    // Anti-spam 30 sec
-    if (ticketCooldown.has(userId)) {
-        const last = ticketCooldown.get(userId);
-        if (now - last < 30000) {
-            const remaining = Math.ceil((30000 - (now - last)) / 1000);
-            return interaction.reply({
-                content: `⛔ Vous devez attendre **${remaining}s** avant d’ouvrir un nouveau ticket.`,
-                ephemeral: true
-            });
-        }
-    }
-
-    ticketCooldown.set(userId, now);
-
-    const guildId = interaction.guild.id;
-    const config = serverConfig[guildId];
     const type = interaction.values[0];
 
-    const categoryId = config.categories[type];
-    const staffRoles = config.staffRoles[type];
+    const modal = new ModalBuilder()
+        .setCustomId(`modal_${type}`)
+        .setTitle(`💠 Ticket : ${type}`);
 
-    const channelName = `・🎫・${type}-${interaction.user.username}`;
+    const input = new TextInputBuilder()
+        .setCustomId("details")
+        .setLabel("Explique ta demande")
+        .setStyle(TextInputStyle.Paragraph)
+        .setRequired(true);
 
-    const channel = await interaction.guild.channels.create({
-    name: channelName,
-    parent: categoryId,
-    permissionOverwrites: [
-        {
-            id: interaction.guild.id,
-            deny: [PermissionsBitField.Flags.ViewChannel]
-        },
-        {
-            id: interaction.user.id,
-            allow: [
-                PermissionsBitField.Flags.ViewChannel,
-                PermissionsBitField.Flags.SendMessages,
-                PermissionsBitField.Flags.ReadMessageHistory
-            ]
-        },
-        {
-            id: client.user.id,
-            allow: [
-                PermissionsBitField.Flags.ViewChannel,
-                PermissionsBitField.Flags.SendMessages,
-                PermissionsBitField.Flags.ReadMessageHistory
-            ]
-        },
-        ...staffRoles.map(r => ({
-            id: r,
-            allow: [
-                PermissionsBitField.Flags.ViewChannel,
-                PermissionsBitField.Flags.SendMessages,
-                PermissionsBitField.Flags.ReadMessageHistory
-            ]
-        }))
-    ]
+    const row = new ActionRowBuilder().addComponents(input);
+    modal.addComponents(row);
+
+    await interaction.showModal(modal);
 });
 
+// ===============================
+// CRÉATION DU TICKET APRÈS FORMULAIRE
+// ===============================
 
-    const embed = createStyledEmbed("Ticket ouvert", autoMessages[type]);
+client.on("interactionCreate", async interaction => {
+    if (!interaction.isModalSubmit()) return;
 
-    const closeButton = new ButtonBuilder()
+    const type = interaction.customId.replace("modal_", "");
+    const details = interaction.fields.getTextInputValue("details");
+
+    const categoryId = serverConfig.categories[type];
+    const staffRoles = serverConfig.staffRoles[type];
+
+    const channelName = `🎫・${type}-${interaction.user.username}`;
+
+    const ticketChannel = await interaction.guild.channels.create({
+        name: channelName,
+        parent: categoryId,
+        permissionOverwrites: [
+            {
+                id: interaction.guild.id,
+                deny: [PermissionsBitField.Flags.ViewChannel]
+            },
+            {
+                id: interaction.user.id,
+                allow: [
+                    PermissionsBitField.Flags.ViewChannel,
+                    PermissionsBitField.Flags.SendMessages,
+                    PermissionsBitField.Flags.ReadMessageHistory
+                ]
+            },
+            {
+                id: client.user.id,
+                allow: [
+                    PermissionsBitField.Flags.ViewChannel,
+                    PermissionsBitField.Flags.SendMessages,
+                    PermissionsBitField.Flags.ReadMessageHistory
+                ]
+            },
+            ...staffRoles.map(r => ({
+                id: r,
+                allow: [
+                    PermissionsBitField.Flags.ViewChannel,
+                    PermissionsBitField.Flags.SendMessages,
+                    PermissionsBitField.Flags.ReadMessageHistory
+                ]
+            }))
+        ]
+    });
+
+    const embed = premiumEmbed(
+        "Ticket Ouvert",
+        `💠 **Type :** ${type}\n💠 **Utilisateur :** ${interaction.user}\n\n📄 **Détails :**\n${details}`
+    );
+
+    const closeBtn = new ButtonBuilder()
         .setCustomId("close_ticket")
         .setLabel("Fermer le ticket")
         .setStyle(ButtonStyle.Danger);
 
-    const row = new ActionRowBuilder().addComponents(closeButton);
+    const row = new ActionRowBuilder().addComponents(closeBtn);
 
-    await channel.send({ embeds: [embed], components: [row] });
+    await ticketChannel.send({ embeds: [embed], components: [row] });
 
-    await interaction.reply({ content: `🎫 Ticket ouvert : ${channel}`, ephemeral: true });
+    await interaction.reply({ content: `🎫 Ticket créé : ${ticketChannel}`, ephemeral: true });
 
-const fixedChannel = interaction.guild.channels.cache.get("1505943795643060235");
-if (fixedChannel) {
-    fixedChannel.send({
-        embeds: [
-            createStyledEmbed(
-                "Nouveau ticket",
-                `👤 **Utilisateur :** ${interaction.user}\n📂 **Type :** ${type}\n📁 **Salon :** ${channel}`
-            )
-        ]
-    });
-}
     // Logs
-    const logChannel = interaction.guild.channels.cache.get(config.logs);
+    const logChannel = interaction.guild.channels.cache.get(serverConfig.logs);
     if (logChannel) {
-        const logEmbed = createStyledEmbed(
-            "Nouveau ticket",
-            `👤 **Utilisateur :** ${interaction.user}\n📂 **Type :** ${type}\n📁 **Salon :** ${channel}`
-        );
-        logChannel.send({ embeds: [logEmbed] });
+        logChannel.send({
+            embeds: [
+                premiumEmbed(
+                    "Nouveau Ticket",
+                    `👤 **Utilisateur :** ${interaction.user}\n📂 **Type :** ${type}\n📁 **Salon :** ${ticketChannel}`
+                )
+            ]
+        });
     }
 });
 
@@ -228,24 +213,9 @@ client.on("interactionCreate", async interaction => {
     if (!interaction.isButton()) return;
     if (interaction.customId !== "close_ticket") return;
 
-    const guildId = interaction.guild.id;
-    const config = serverConfig[guildId];
-
-    const closingEmbed = createStyledEmbed(
-        "Fermeture du ticket",
-        `🔹 Le ticket sera fermé dans **3 secondes**.\nMerci d’avoir utilisé Nancy Ticket.`
-    );
-
-    await interaction.reply({ embeds: [closingEmbed] });
-
-    const logChannel = interaction.guild.channels.cache.get(config.logs);
-    if (logChannel) {
-        const logEmbed = createStyledEmbed(
-            "Ticket fermé",
-            `📁 **Salon :** ${interaction.channel.name}\n👤 **Fermé par :** ${interaction.user}`
-        );
-        logChannel.send({ embeds: [logEmbed] });
-    }
+    await interaction.reply({
+        embeds: [premiumEmbed("Fermeture", "Le ticket sera fermé dans 3 secondes…")]
+    });
 
     setTimeout(() => {
         interaction.channel.delete().catch(() => {});
