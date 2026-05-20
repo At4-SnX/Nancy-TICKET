@@ -150,31 +150,40 @@ client.on("interactionCreate", async interaction => {
     const channelName = `・🎫・${type}-${interaction.user.username}`;
 
     const channel = await interaction.guild.channels.create({
-        name: channelName,
-        parent: categoryId,
-        permissionOverwrites: [
-            {
-                id: interaction.guild.id,
-                deny: [PermissionsBitField.Flags.ViewChannel]
-            },
-            {
-                id: interaction.user.id,
-                allow: [
-                    PermissionsBitField.Flags.ViewChannel,
-                    PermissionsBitField.Flags.SendMessages,
-                    PermissionsBitField.Flags.ReadMessageHistory
-                ]
-            },
-            ...staffRoles.map(r => ({
-                id: r,
-                allow: [
-                    PermissionsBitField.Flags.ViewChannel,
-                    PermissionsBitField.Flags.SendMessages,
-                    PermissionsBitField.Flags.ReadMessageHistory
-                ]
-            }))
-        ]
-    });
+    name: channelName,
+    parent: categoryId,
+    permissionOverwrites: [
+        {
+            id: interaction.guild.id,
+            deny: [PermissionsBitField.Flags.ViewChannel]
+        },
+        {
+            id: interaction.user.id,
+            allow: [
+                PermissionsBitField.Flags.ViewChannel,
+                PermissionsBitField.Flags.SendMessages,
+                PermissionsBitField.Flags.ReadMessageHistory
+            ]
+        },
+        {
+            id: client.user.id,
+            allow: [
+                PermissionsBitField.Flags.ViewChannel,
+                PermissionsBitField.Flags.SendMessages,
+                PermissionsBitField.Flags.ReadMessageHistory
+            ]
+        },
+        ...staffRoles.map(r => ({
+            id: r,
+            allow: [
+                PermissionsBitField.Flags.ViewChannel,
+                PermissionsBitField.Flags.SendMessages,
+                PermissionsBitField.Flags.ReadMessageHistory
+            ]
+        }))
+    ]
+});
+
 
     const embed = createStyledEmbed("Ticket ouvert", autoMessages[type]);
 
@@ -189,6 +198,17 @@ client.on("interactionCreate", async interaction => {
 
     await interaction.reply({ content: `🎫 Ticket ouvert : ${channel}`, ephemeral: true });
 
+const fixedChannel = interaction.guild.channels.cache.get("1505943795643060235");
+if (fixedChannel) {
+    fixedChannel.send({
+        embeds: [
+            createStyledEmbed(
+                "Nouveau ticket",
+                `👤 **Utilisateur :** ${interaction.user}\n📂 **Type :** ${type}\n📁 **Salon :** ${channel}`
+            )
+        ]
+    });
+}
     // Logs
     const logChannel = interaction.guild.channels.cache.get(config.logs);
     if (logChannel) {
