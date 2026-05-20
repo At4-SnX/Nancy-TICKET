@@ -24,10 +24,9 @@ const client = new Client({
     partials: [Partials.Channel]
 });
 
-// CONFIG SERVEUR
-const SERVER_ID = "1472637775281918123";
+// CONFIG
 const PANEL_CHANNEL = "1505943795643060235";
-const STAFF_ROLE = "1505943612507295826"; // Staff
+const STAFF_ROLE = "1505943612507295826";
 
 const config = {
     categories: {
@@ -42,30 +41,30 @@ const config = {
     logs: "1506375933051932753"
 };
 
-// VARIABLES GLOBALES
-const activeTickets = new Map(); // anti-spam avancé
-const claimedTickets = new Map(); // auto-claim
-const staffPinged = new Set(); // bouton "appeler un staff"
+// VARIABLES
+const activeTickets = new Map();
+const claimedTickets = new Map();
+const staffPinged = new Set();
 
 client.on("ready", async () => {
     console.log(`Connecté en tant que ${client.user.tag}`);
 
     const channel = await client.channels.fetch(PANEL_CHANNEL);
-    if (!channel) return console.log("Salon panel introuvable.");
+    if (!channel) return;
 
     const embed = new EmbedBuilder()
         .setTitle("🎟️ Support Nancy RP")
         .setDescription(
-            "Bienvenue sur le système de support officiel de **Nancy RP**.\n\n" +
+            "Bienvenue sur le **Support Officiel Nancy RP**.\n\n" +
             "Sélectionnez une catégorie ci‑dessous pour ouvrir un ticket.\n" +
-            "Un formulaire apparaîtra automatiquement pour recueillir vos informations.\n\n" +
-            "💬 *Notre équipe est là pour vous accompagner.*"
+            "Un formulaire apparaîtra automatiquement.\n\n" +
+            "🔵 *Notre équipe est là pour vous accompagner.*"
         )
-        .setColor("#2C2F33");
+        .setColor("#237FEB");
 
     const menu = new StringSelectMenuBuilder()
         .setCustomId("ticket_menu")
-        .setPlaceholder("Choisissez une catégorie")
+        .setPlaceholder("🔵 Choisissez une catégorie")
         .addOptions([
             { label: "❓ Question", value: "question" },
             { label: "🤝 Partenariat", value: "partenariat" },
@@ -73,7 +72,8 @@ client.on("ready", async () => {
             { label: "⚠️ Report Joueur", value: "reportjoueur" },
             { label: "📘 Demande Légal", value: "legal" },
             { label: "📕 Demande Illégal", value: "illegal" },
-            { label: "🏛️ Fondation", value: "fondation" }
+            { label: "🏛️ Fondation", value: "fondation" },
+            { label: "🚨 Ticket Prioritaire", value: "prioritaire" }
         ]);
 
     const row = new ActionRowBuilder().addComponents(menu);
@@ -87,7 +87,6 @@ client.on("interactionCreate", async interaction => {
 
     const type = interaction.values[0];
 
-    // Anti-spam avancé : 1 ticket par catégorie
     if (activeTickets.has(`${interaction.user.id}_${type}`)) {
         return interaction.reply({
             content: "❌ Vous avez déjà un ticket ouvert dans cette catégorie.",
@@ -97,7 +96,7 @@ client.on("interactionCreate", async interaction => {
 
     const modal = new ModalBuilder()
         .setCustomId(`modal_${type}`)
-        .setTitle(`Ticket : ${type}`);
+        .setTitle(`🔵 Ticket : ${type}`);
 
     const input = new TextInputBuilder()
         .setCustomId("details")
@@ -116,7 +115,7 @@ client.on("interactionCreate", async interaction => {
     const type = interaction.customId.replace("modal_", "");
     const details = interaction.fields.getTextInputValue("details");
 
-    const categoryId = config.categories[type];
+    const categoryId = config.categories[type] || config.categories.question;
 
     const channelName = `🎫・${type}-${interaction.user.username}`;
 
@@ -131,34 +130,36 @@ client.on("interactionCreate", async interaction => {
         ]
     });
 
-    // Anti-spam avancé
     activeTickets.set(`${interaction.user.id}_${type}`, ticketChannel.id);
 
-    // Embed d’ouverture
     const embed = new EmbedBuilder()
         .setTitle("🎫 Ticket Ouvert — Nancy RP")
         .setDescription(
-            `Votre demande a été enregistrée.\n\n` +
+            `👤 **Utilisateur :** ${interaction.user}\n\n` +
             `📝 **Détails fournis :**\n${details}\n\n` +
-            `⏳ Un membre du staff va vous répondre.`
+            `🔵 Un membre du staff va vous répondre.`
         )
-        .setColor("#2C2F33");
+        .setColor("#237FEB");
 
-    // Boutons
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId("call_staff")
-            .setLabel("Appeler un staff")
+            .setLabel("🔔 Appeler un staff")
             .setStyle(ButtonStyle.Primary),
 
         new ButtonBuilder()
+            .setCustomId("claim_ticket")
+            .setLabel("🧷 Claim le ticket")
+            .setStyle(ButtonStyle.Success),
+
+        new ButtonBuilder()
             .setCustomId("add_user")
-            .setLabel("Ajouter un utilisateur")
+            .setLabel("➕ Ajouter un utilisateur")
             .setStyle(ButtonStyle.Secondary),
 
         new ButtonBuilder()
             .setCustomId("close_ticket")
-            .setLabel("Fermer le ticket")
+            .setLabel("🗑️ Fermer")
             .setStyle(ButtonStyle.Danger)
     );
 
@@ -170,27 +171,23 @@ client.on("interactionCreate", async interaction => {
     });
 });
 
-client.on("messageCreate", async message => {
-    if (message.author.bot) return;
-
-    const channel = message.channel;
-
-    // Auto-claim
-    if (channel.name.startsWith("🎫") && message.member.roles.cache.has(STAFF_ROLE)) {
-        if (!claimedTickets.has(channel.id)) {
-            claimedTickets.set(channel.id, message.author.id);
-
-            channel.send(`🧷 **Ticket pris en charge par :** ${message.author}`);
-        }
-    }
-});
-
 client.on("interactionCreate", async interaction => {
     if (!interaction.isButton()) return;
 
     const channel = interaction.channel;
 
-    // Appeler un staff
+    // Claim
+    if (interaction.customId === "claim_ticket") {
+        if (!interaction.member.roles.cache.has(STAFF_ROLE)) {
+            return interaction.reply({ content: "❌ Seul un staff peut claim.", ephemeral: true });
+        }
+
+        claimedTickets.set(channel.id, interaction.user.id);
+
+        return channel.send(`🧷 **Ticket pris en charge par :** ${interaction.user}`);
+    }
+
+    // Appeler staff
     if (interaction.customId === "call_staff") {
         if (staffPinged.has(channel.id)) {
             return interaction.reply({ content: "❌ Un staff a déjà été appelé.", ephemeral: true });
@@ -198,11 +195,11 @@ client.on("interactionCreate", async interaction => {
 
         staffPinged.add(channel.id);
 
-        await channel.send(`🔔 **Un staff a été appelé.**`);
-        return interaction.reply({ content: "Staff appelé.", ephemeral: true });
+        await channel.send(`<@&${STAFF_ROLE}> 🔔 **Un staff est demandé ici !**`);
+        return interaction.reply({ content: "Staff pingé.", ephemeral: true });
     }
 
-    // Ajouter un utilisateur
+    // Ajouter utilisateur
     if (interaction.customId === "add_user") {
         const modal = new ModalBuilder()
             .setCustomId("add_user_modal")
@@ -218,33 +215,12 @@ client.on("interactionCreate", async interaction => {
 
         return interaction.showModal(modal);
     }
-
-    if (interaction.customId === "close_ticket") {
-        if (!interaction.member.roles.cache.has(STAFF_ROLE)) {
-            return interaction.reply({ content: "❌ Seul un staff peut fermer ce ticket.", ephemeral: true });
-        }
-
-        // On passe à l’évaluation
-        const modal = new ModalBuilder()
-            .setCustomId("rating_modal")
-            .setTitle("Évaluation du ticket");
-
-        const input = new TextInputBuilder()
-            .setCustomId("rating")
-            .setLabel("Notez le support (1 à 5)")
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-        modal.addComponents(new ActionRowBuilder().addComponents(input));
-
-        return interaction.showModal(modal);
-    }
 });
 
 client.on("interactionCreate", async interaction => {
     if (!interaction.isModalSubmit()) return;
 
-    // Ajouter un utilisateur
+    // Ajouter utilisateur
     if (interaction.customId === "add_user_modal") {
         const userId = interaction.fields.getTextInputValue("userid");
         const user = await interaction.guild.members.fetch(userId).catch(() => null);
@@ -261,11 +237,10 @@ client.on("interactionCreate", async interaction => {
         return interaction.reply({ content: `➕ ${user} ajouté au ticket.`, ephemeral: true });
     }
 
-    // Évaluation + fermeture
+    // Évaluation
     if (interaction.customId === "rating_modal") {
         const rating = interaction.fields.getTextInputValue("rating");
 
-        // Transcript
         let transcript = `Transcript du ticket ${interaction.channel.name}\n\n`;
 
         const messages = await interaction.channel.messages.fetch({ limit: 100 });
@@ -284,6 +259,31 @@ client.on("interactionCreate", async interaction => {
         await interaction.reply({ content: "🗑️ Ticket fermé.", ephemeral: true });
 
         setTimeout(() => interaction.channel.delete().catch(() => {}), 2000);
+    }
+});
+
+// Fermeture staff only
+client.on("interactionCreate", async interaction => {
+    if (!interaction.isButton()) return;
+
+    if (interaction.customId === "close_ticket") {
+        if (!interaction.member.roles.cache.has(STAFF_ROLE)) {
+            return interaction.reply({ content: "❌ Seul un staff peut fermer ce ticket.", ephemeral: true });
+        }
+
+        const modal = new ModalBuilder()
+            .setCustomId("rating_modal")
+            .setTitle("Évaluation du ticket");
+
+        const input = new TextInputBuilder()
+            .setCustomId("rating")
+            .setLabel("Notez le support (1 à 5)")
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+        modal.addComponents(new ActionRowBuilder().addComponents(input));
+
+        return interaction.showModal(modal);
     }
 });
 
