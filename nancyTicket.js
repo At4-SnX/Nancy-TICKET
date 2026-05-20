@@ -24,12 +24,9 @@ const client = new Client({
     partials: [Partials.Channel]
 });
 
-// ===============================
-// CONFIGURATION SERVEUR
-// ===============================
-
-const SERVER_ID = "1472637775281918123"; // ID de ton serveur
-const PANEL_CHANNEL = "1505943795643060235"; // Salon où envoyer le panel
+// IDs
+const SERVER_ID = "1472637775281918123";
+const PANEL_CHANNEL = "1505943795643060235";
 
 const serverConfig = {
     categories: {
@@ -53,10 +50,6 @@ const serverConfig = {
     logs: "1506375933051932753"
 };
 
-// ===============================
-// EMBED PREMIUM BLEU
-// ===============================
-
 function premiumEmbed(title, desc) {
     return new EmbedBuilder()
         .setTitle(`💠 ${title}`)
@@ -66,42 +59,43 @@ function premiumEmbed(title, desc) {
         .setTimestamp();
 }
 
-// ===============================
-// ENVOI DU PANEL AU DÉMARRAGE
-// ===============================
-
 client.on("ready", async () => {
-    console.log(`Connecté en tant que ${client.user.tag}`);
+    console.log(`✅ Connecté en tant que ${client.user.tag}`);
 
-    const channel = client.channels.cache.get(PANEL_CHANNEL);
-    if (!channel) return console.log("❌ Salon du panel introuvable.");
+    try {
+        const channel = await client.channels.fetch(PANEL_CHANNEL);
+        if (!channel) {
+            console.log("❌ Salon du panel introuvable.");
+            return;
+        }
 
-    const embed = premiumEmbed(
-        "Centre de Support",
-        "Sélectionnez une catégorie ci‑dessous pour ouvrir un ticket.\nUn formulaire apparaîtra automatiquement."
-    );
+        const embed = premiumEmbed(
+            "Centre de Support",
+            "Sélectionnez une catégorie ci‑dessous pour ouvrir un ticket.\nUn formulaire apparaîtra automatiquement."
+        );
 
-    const menu = new StringSelectMenuBuilder()
-        .setCustomId("ticket_menu")
-        .setPlaceholder("💠 Choisissez une catégorie")
-        .addOptions([
-            { label: "💙 Question", value: "question" },
-            { label: "💙 Partenariat", value: "partenariat" },
-            { label: "💙 Report Staff", value: "reportstaff" },
-            { label: "💙 Report Joueur", value: "reportjoueur" },
-            { label: "💙 Demande Légal", value: "legal" },
-            { label: "💙 Demande Illégal", value: "illegal" },
-            { label: "💙 Fondation", value: "fondation" }
-        ]);
+        const menu = new StringSelectMenuBuilder()
+            .setCustomId("ticket_menu")
+            .setPlaceholder("💠 Choisissez une catégorie")
+            .addOptions([
+                { label: "💙 Question", value: "question" },
+                { label: "💙 Partenariat", value: "partenariat" },
+                { label: "💙 Report Staff", value: "reportstaff" },
+                { label: "💙 Report Joueur", value: "reportjoueur" },
+                { label: "💙 Demande Légal", value: "legal" },
+                { label: "💙 Demande Illégal", value: "illegal" },
+                { label: "💙 Fondation", value: "fondation" }
+            ]);
 
-    const row = new ActionRowBuilder().addComponents(menu);
+        const row = new ActionRowBuilder().addComponents(menu);
 
-    await channel.send({ embeds: [embed], components: [row] });
+        await channel.send({ embeds: [embed], components: [row] });
+
+        console.log("✅ Panel envoyé dans le salon du panel.");
+    } catch (err) {
+        console.log("❌ Erreur lors de l’envoi du panel :", err);
+    }
 });
-
-// ===============================
-// OUVERTURE DU FORMULAIRE
-// ===============================
 
 client.on("interactionCreate", async interaction => {
     if (!interaction.isStringSelectMenu()) return;
@@ -125,18 +119,22 @@ client.on("interactionCreate", async interaction => {
     await interaction.showModal(modal);
 });
 
-// ===============================
-// CRÉATION DU TICKET APRÈS FORMULAIRE
-// ===============================
-
 client.on("interactionCreate", async interaction => {
     if (!interaction.isModalSubmit()) return;
+    if (!interaction.customId.startsWith("modal_")) return;
 
     const type = interaction.customId.replace("modal_", "");
     const details = interaction.fields.getTextInputValue("details");
 
     const categoryId = serverConfig.categories[type];
     const staffRoles = serverConfig.staffRoles[type];
+
+    if (!categoryId || !staffRoles) {
+        return interaction.reply({
+            content: "❌ Configuration du serveur invalide pour ce type de ticket.",
+            ephemeral: true
+        });
+    }
 
     const channelName = `🎫・${type}-${interaction.user.username}`;
 
@@ -189,9 +187,11 @@ client.on("interactionCreate", async interaction => {
 
     await ticketChannel.send({ embeds: [embed], components: [row] });
 
-    await interaction.reply({ content: `🎫 Ticket créé : ${ticketChannel}`, ephemeral: true });
+    await interaction.reply({
+        content: `🎫 Ticket créé : ${ticketChannel}`,
+        ephemeral: true
+    });
 
-    // Logs
     const logChannel = interaction.guild.channels.cache.get(serverConfig.logs);
     if (logChannel) {
         logChannel.send({
@@ -204,10 +204,6 @@ client.on("interactionCreate", async interaction => {
         });
     }
 });
-
-// ===============================
-// FERMETURE DU TICKET
-// ===============================
 
 client.on("interactionCreate", async interaction => {
     if (!interaction.isButton()) return;
@@ -222,9 +218,4 @@ client.on("interactionCreate", async interaction => {
     }, 3000);
 });
 
-// ===============================
-// TOKEN
-// ===============================
-
 client.login(process.env.TOKEN);
-
